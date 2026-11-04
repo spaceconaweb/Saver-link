@@ -11,7 +11,6 @@ import {
   FileText,
   Globe,
   Layers,
-  MessageCircle,
   Mic,
   MicOff,
   Send,
@@ -221,53 +220,53 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
         </section>
       </div>
 
-      <section className="mt-5 border-t border-pink-100 pt-4" aria-label="Ask AI about this link">
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-pink-100 pt-4">
+        <time className="text-xs text-slate-500">
+          {isExample
+            ? "Example link"
+            : link.created_at
+            ? new Date(link.created_at * 1000).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : "Recently saved"}
+        </time>
+        <button
+          type="button"
+          onClick={onSummarize}
+          disabled={isExample}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-xs font-semibold text-pink-700 transition hover:border-pink-200 hover:bg-pink-100 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-default disabled:opacity-70"
+        >
+          <Sparkles size={14} aria-hidden="true" />
+          {isExample ? "Example summary" : link.summary ? "View summary" : "Create summary"}
+        </button>
+      </div>
+
+      <section className="mt-4 rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50 via-white to-purple-50 p-4" aria-label="Ask AI about this link">
         <button
           type="button"
           onClick={() => setIsAskOpen((open) => !open)}
           aria-expanded={isAskOpen}
           aria-controls={`ask-ai-${link.id}`}
           disabled={isExample}
-          className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-pink-700 transition hover:bg-pink-50 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-pink-800 transition hover:bg-white/70 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <MessageCircle size={16} aria-hidden="true" />
-          {isExample ? "Save this link to ask AI" : "Ask AI"}
+          <Sparkles size={16} aria-hidden="true" />
+          <span>✨ Ask AI anything about this link...</span>
         </button>
 
         {isAskOpen && !isExample && (
           <div id={`ask-ai-${link.id}`} className="mt-3 space-y-3">
-            {messages.length > 0 && (
-              <div
-                className="max-h-52 space-y-3 overflow-y-auto rounded-xl border border-pink-100 bg-pink-50/60 p-3"
-                role="log"
-                aria-live="polite"
-                aria-label="Conversation"
-              >
-                {messages.map((message, index) => (
-                  <p
-                    key={`${index}-${message.role}`}
-                    className={`text-sm leading-6 ${
-                      message.role === "user" ? "font-medium text-pink-900" : "text-slate-700"
-                    }`}
-                  >
-                    <span className="font-semibold">
-                      {message.role === "user" ? "You: " : "LinkSava AI: "}
-                    </span>
-                    {message.text}
-                  </p>
-                ))}
-              </div>
-            )}
-
             <label className="block">
               <span className="sr-only">Output mode</span>
               <select
                 value={outputMode}
                 onChange={(event) => setOutputMode(event.target.value)}
-                className="mb-2 rounded-lg border border-pink-100 bg-white px-3 py-2 text-xs font-medium text-pink-900 outline-none focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
+                className="mb-2 rounded-lg border border-pink-100 bg-white px-3 py-2 text-xs font-medium text-purple-900 outline-none focus:border-pink-300 focus:ring-4 focus:ring-pink-100"
               >
-                <option value="text">Output mode: Text</option>
-                <option value="voice">Output mode: Voice</option>
+                <option value="text">💬 Text</option>
+                <option value="voice">🔊 Voice</option>
               </select>
             </label>
 
@@ -310,6 +309,31 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
               </button>
             </form>
 
+            <div
+              className="mt-3 max-h-52 space-y-3 overflow-y-auto rounded-xl border border-pink-100 bg-white/80 p-3 text-sm text-slate-700"
+              role="log"
+              aria-live="polite"
+              aria-label="AI conversation and response"
+            >
+              {messages.length === 0 ? (
+                <p className="text-slate-500">Your AI answer will appear here.</p>
+              ) : (
+                messages.map((message, index) => (
+                  <p
+                    key={`${index}-${message.role}`}
+                    className={`leading-6 ${
+                      message.role === "user" ? "font-medium text-pink-900" : "text-slate-700"
+                    }`}
+                  >
+                    <span className="font-semibold">
+                      {message.role === "user" ? "You: " : "LinkSava AI: "}
+                    </span>
+                    {message.text}
+                  </p>
+                ))
+              )}
+            </div>
+
             {isSubmitting && (
               <p className="text-xs text-slate-500" role="status">
                 Reading the saved page and preparing an answer...
@@ -328,29 +352,6 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
           </div>
         )}
       </section>
-
-      <div className="mt-6 flex items-center justify-between gap-3 border-t border-pink-100 pt-4">
-        <time className="text-xs text-slate-500">
-          {isExample
-            ? "Example link"
-            : link.created_at
-            ? new Date(link.created_at * 1000).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })
-            : "Recently saved"}
-        </time>
-        <button
-          type="button"
-          onClick={onSummarize}
-          disabled={isExample}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-xs font-semibold text-pink-700 transition hover:border-pink-200 hover:bg-pink-100 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-default disabled:opacity-70"
-        >
-          <Sparkles size={14} aria-hidden="true" />
-          {isExample ? "Example summary" : link.summary ? "View summary" : "Create summary"}
-        </button>
-      </div>
     </article>
   );
 }
