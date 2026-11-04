@@ -1,51 +1,67 @@
-import React from 'react';
-import { Layers, FolderIcon, Sparkles, LogOut } from 'lucide-react';
+import { Bookmark, FolderHeart, Layers, LogOut, Sparkles } from "lucide-react";
+import Link from "next/link";
+
+const MENU_ITEMS = [
+  { id: "all", name: "All links", icon: Layers },
+  { id: "collections", name: "Collections", icon: FolderHeart },
+  { id: "ai-assistant", name: "AI summaries", icon: Sparkles },
+];
 
 export default function Sidebar({ activeTab, setActiveTab }) {
-  const menuItems = [
-    { id: 'all', name: 'All Links', icon: Layers },
-    { id: 'collections', name: 'Collections', icon: FolderIcon },
-    { id: 'ai-assistant', name: 'AI Assistant', icon: Sparkles },
-  ];
-
   return (
-    <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col justify-between flex-shrink-0">
-      <div className="px-4 py-6">
-        <div className="flex items-center gap-3 px-3 mb-8">
-          <div className="h-9 w-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Layers className="text-white" size={18} />
-          </div>
-          <span className="font-bold text-lg tracking-wide text-white">HubLink</span>
-        </div>
+    <aside className="flex shrink-0 flex-col border-b border-pink-100 bg-white/90 px-4 py-4 md:min-h-screen md:w-64 md:border-b-0 md:border-r md:px-5 md:py-7">
+      <Link href="/" className="mb-4 flex items-center gap-3 px-2 md:mb-10">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600">
+          <Bookmark size={20} aria-hidden="true" />
+        </span>
+        <span>
+          <span className="block text-lg font-bold tracking-tight text-pink-900">HubLink</span>
+          <span className="block text-xs text-slate-500">A home for what matters</span>
+        </span>
+      </Link>
 
-        <nav className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
-                  isActive 
-                    ? 'bg-slate-800 text-indigo-400 border border-slate-700' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-                }`}
-              >
-                <Icon size={18} className={isActive ? 'text-indigo-400' : 'text-slate-400'} />
-                {item.name}
-              </button>
-            );
-          })}
-        </nav>
+      <nav aria-label="Main navigation" className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:gap-1">
+        {MENU_ITEMS.map(({ id, name, icon: Icon }) => {
+          const isActive = activeTab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveTab(id)}
+              aria-current={isActive ? "page" : undefined}
+              className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition focus:outline-none focus:ring-4 focus:ring-pink-100 md:w-full md:px-4 ${
+                isActive
+                  ? "bg-pink-100 text-pink-900"
+                  : "text-slate-600 hover:bg-pink-50 hover:text-pink-700"
+              }`}
+            >
+              <Icon size={18} className={isActive ? "text-pink-600" : "text-slate-500"} aria-hidden="true" />
+              {name}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="mt-6 hidden rounded-2xl border border-pink-100 bg-gradient-to-br from-pink-50 to-white p-4 md:block">
+        <span className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-white text-pink-600 shadow-sm">
+          <Sparkles size={16} aria-hidden="true" />
+        </span>
+        <p className="text-sm font-semibold text-slate-800">Breathe easy</p>
+        <p className="mt-1 text-xs leading-5 text-slate-600">
+          The things you love are tucked away right here.
+        </p>
       </div>
 
-      <div className="p-4 border-t border-slate-900">
-        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-300 transition rounded-xl">
-          <LogOut size={18} />
-          Sign Out
-        </button>
-      </div>
+      <div className="hidden flex-1 md:block" />
+      <button
+        type="button"
+        disabled
+        title="Sign out is not available yet"
+        className="mt-4 hidden w-full cursor-not-allowed items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-400 md:flex"
+      >
+        <LogOut size={18} aria-hidden="true" />
+        Sign out
+      </button>
     </aside>
   );
 }
