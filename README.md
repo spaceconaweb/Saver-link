@@ -56,10 +56,13 @@ database, so verify the database and environment before running them.
 
 The summary endpoint currently stores a deterministic placeholder summary; the
 Ask AI card console uses the Llama 3.1 8B Instruct model through Workers AI.
+Voice questions are recorded with the browser's MediaRecorder API and
+transcribed through Cloudflare's Whisper large-v3-turbo Workers AI model.
 The chat endpoint fetches only the webpage URL saved in D1, follows a limited
 number of validated redirects, and caps the amount of page text sent to the
-model. Consider adding Cloudflare rate limits to `/api/chat` before sharing the
-app publicly.
+model. Microphone access requires browser permission and a secure context
+(HTTPS or localhost). Workers AI usage may incur charges. Consider adding
+Cloudflare rate limits to `/api/chat` before sharing the app publicly.
 
 In Cloudflare Pages, set the build command to `npm run build` and the build
 output directory to `out`. Once the D1 database ID and matching schema are

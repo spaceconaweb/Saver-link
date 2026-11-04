@@ -47,9 +47,13 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
   const [messages, setMessages] = useState([]);
   const [outputMode, setOutputMode] = useState("text");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [chatError, setChatError] = useState("");
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimeoutRef = useRef(null);
+  const discardRecordingRef = useRef(false);
   const supportsSpeechOutput =
     typeof window !== "undefined" && "speechSynthesis" in window;
   const summary =
@@ -58,10 +62,28 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
 
   useEffect(() => {
     return () => {
-      recognitionRef.current?.stop();
+      discardRecordingRef.current = true;
+      window.clearTimeout(recordingTimeoutRef.current);
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       window.speechSynthesis?.cancel();
     };
   }, []);
+
+  const addAssistantResponse = (question, answer) => {
+    setMessages((current) => [
+      ...current,
+      { role: "user", text: question },
+      { role: "assistant", text: answer },
+    ]);
+
+    if (outputMode === "voice" && supportsSpeechOutput) {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(answer));
+    }
+  };
 
   const submitPrompt = async (event, submittedPrompt = prompt) => {
     event?.preventDefault();
@@ -87,16 +109,7 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
         throw new Error("The assistant returned an empty response.");
       }
 
-      setMessages((current) => [
-        ...current,
-        { role: "user", text: question },
-        { role: "assistant", text: data.response },
-      ]);
-
-      if (outputMode === "voice" && supportsSpeechOutput) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(data.response));
-      }
+      addAssistantResponse(question, data.response);
     } catch (error) {
       setPrompt(question);
       setChatError(
@@ -107,43 +120,113 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
     }
   };
 
-  const toggleMicrophone = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Recognition) {
-      setChatError("Voice input isn't supported in this browser. You can type your question instead.");
-      return;
-    }
-
-    const recognition = new Recognition();
-    recognition.lang = navigator.language;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
-      const transcript = event.results[0]?.[0]?.transcript?.trim();
-      if (transcript) {
-        setPrompt(transcript);
-        void submitPrompt(null, transcript);
-      }
-    };
-    recognition.onerror = () => {
-      setChatError("We couldn't hear that. Please try again or type your question.");
-      setIsListening(false);
-    };
-    recognition.onend = () => setIsListening(false);
-    recognitionRef.current = recognition;
+  const submitAudio = async (audioBlob) => {
+    setIsSubmitting(true);
+    setChatError("");
 
     try {
-      recognition.start();
-      setIsListening(true);
+      const formData = new FormData();
+      formData.set("linkId", link.id);
+      formData.set("audio", audioBlob, "question.webm");
+
+      const response = await fetch("/api/chat", { method: "POST", body: formData });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "We couldn't transcribe your recording.");
+      }
+      if (
+        typeof data.transcription !== "string" ||
+        !data.transcription.trim() ||
+        typeof data.response !== "string" ||
+        !data.response.trim()
+      ) {
+        throw new Error("The assistant returned an incomplete audio response.");
+      }
+
+      setPrompt(data.transcription);
+      addAssistantResponse(data.transcription, data.response);
+    } catch (error) {
+      setChatError(
+        error instanceof Error ? error.message : "We couldn't process your recording.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const stopRecording = () => {
+    window.clearTimeout(recordingTimeoutRef.current);
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const toggleMicrophone = async () => {
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setChatError("Audio recording isn't supported in this browser. You can type your question instead.");
+      return;
+    }
+
+    try {
       setChatError("");
-    } catch {
-      setChatError("The microphone couldn't be started. Please check browser permissions.");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const preferredType = [
+        "audio/webm;codecs=opus",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ].find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, preferredType ? { mimeType: preferredType } : {});
+      mediaRecorderRef.current = recorder;
+      discardRecordingRef.current = false;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => {
+        setChatError("Audio recording failed. Please try again.");
+        stopRecording();
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        setIsRecording(false);
+
+        if (discardRecordingRef.current) return;
+        const recording = new Blob(audioChunksRef.current, {
+          type: recorder.mimeType || "application/octet-stream",
+        });
+        audioChunksRef.current = [];
+
+        if (recording.size > 0) {
+          void submitAudio(recording);
+        } else {
+          setChatError("No audio was recorded. Please try again.");
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      recordingTimeoutRef.current = window.setTimeout(stopRecording, 30_000);
+    } catch (error) {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      setIsRecording(false);
+      setChatError(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "Microphone permission was denied. Allow microphone access in your browser and try again."
+          : "The microphone couldn't be started. Check browser permissions and try again.",
+      );
     }
   };
 
@@ -284,16 +367,16 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
               <button
                 type="button"
                 onClick={toggleMicrophone}
-                aria-label={isListening ? "Stop voice input" : "Start voice input"}
-                aria-pressed={isListening}
+                aria-label={isRecording ? "Stop voice recording" : "Start voice recording"}
+                aria-pressed={isRecording}
                 disabled={isSubmitting}
                 className={`rounded-xl p-2.5 transition focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-not-allowed disabled:opacity-50 ${
-                  isListening
+                  isRecording
                     ? "bg-pink-600 text-white"
                     : "border border-pink-100 bg-white text-pink-700 hover:bg-pink-50"
                 }`}
               >
-                {isListening ? (
+                {isRecording ? (
                   <MicOff size={17} aria-hidden="true" />
                 ) : (
                   <Mic size={17} aria-hidden="true" />

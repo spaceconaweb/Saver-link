@@ -1,6 +1,7 @@
 import { getDatabase, jsonResponse } from "../_shared/response.js";
 
 const MAX_PROMPT_LENGTH = 1000;
+const MAX_AUDIO_BYTES = 2_000_000;
 const MAX_PAGE_BYTES = 500_000;
 const MAX_PAGE_TEXT_LENGTH = 12_000;
 const MAX_REDIRECTS = 3;
@@ -55,6 +56,17 @@ function extractPageText(content, contentType) {
       : content;
 
   return decodeCommonEntities(text).replace(/\s+/g, " ").trim().slice(0, MAX_PAGE_TEXT_LENGTH);
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+
+  return btoa(binary);
 }
 
 async function readLimitedBody(response) {
@@ -146,27 +158,72 @@ async function fetchPageText(initialUrl) {
 }
 
 export async function onRequestPost({ request, env }) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return jsonResponse({ error: "Request body must be valid JSON." }, 400);
-  }
+  const contentType = request.headers.get("Content-Type")?.toLowerCase() || "";
+  let linkId = "";
+  let userPrompt = "";
+  let audioFile = null;
 
-  const linkId = typeof body?.linkId === "string" ? body.linkId.trim() : "";
-  const userPrompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+  try {
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      linkId = typeof formData.get("linkId") === "string" ? formData.get("linkId").trim() : "";
+      const audio = formData.get("audio");
+      if (audio instanceof File) audioFile = audio;
+    } else if (contentType.includes("application/json")) {
+      const body = await request.json();
+      linkId = typeof body?.linkId === "string" ? body.linkId.trim() : "";
+      userPrompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+    } else {
+      return jsonResponse({ error: "Use JSON or multipart form data for chat requests." }, 415);
+    }
+  } catch {
+    return jsonResponse({ error: "The chat request body is invalid." }, 400);
+  }
 
   if (!linkId) {
     return jsonResponse({ error: "A saved link ID is required." }, 400);
   }
-  if (!userPrompt || userPrompt.length > MAX_PROMPT_LENGTH) {
+  if (!audioFile && (!userPrompt || userPrompt.length > MAX_PROMPT_LENGTH)) {
     return jsonResponse(
       { error: `Enter a question between 1 and ${MAX_PROMPT_LENGTH} characters.` },
       400,
     );
   }
+  if (audioFile && (audioFile.size === 0 || audioFile.size > MAX_AUDIO_BYTES)) {
+    return jsonResponse({ error: "The audio recording must be between 1 byte and 2 MB." }, 413);
+  }
   if (!env.AI || typeof env.AI.run !== "function") {
     return jsonResponse({ error: 'The Workers AI binding "AI" is not configured.' }, 503);
+  }
+
+  let transcription = "";
+  if (audioFile) {
+    try {
+      const audioBytes = new Uint8Array(await audioFile.arrayBuffer());
+      const transcriptionResult = await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
+        audio: bytesToBase64(audioBytes),
+        task: "transcribe",
+      });
+
+      transcription =
+        typeof transcriptionResult?.text === "string"
+          ? transcriptionResult.text.trim()
+          : typeof transcriptionResult?.transcription_info?.text === "string"
+            ? transcriptionResult.transcription_info.text.trim()
+            : "";
+
+      if (!transcription || transcription.length > MAX_PROMPT_LENGTH) {
+        return jsonResponse(
+          { error: "We couldn't recognize a short question in that recording. Please try again." },
+          422,
+        );
+      }
+
+      userPrompt = transcription;
+    } catch (error) {
+      console.error("Workers AI audio transcription failed:", error);
+      return jsonResponse({ error: "We couldn't transcribe that recording. Please try again." }, 502);
+    }
   }
 
   let link;
@@ -219,7 +276,10 @@ export async function onRequestPost({ request, env }) {
       throw new Error("Workers AI returned no text response.");
     }
 
-    return jsonResponse({ response: result.response.trim() });
+    return jsonResponse({
+      response: result.response.trim(),
+      ...(transcription ? { transcription } : {}),
+    });
   } catch (error) {
     console.error("Workers AI chat generation failed:", error);
     return jsonResponse({ error: "The assistant couldn't generate a reply right now." }, 502);
