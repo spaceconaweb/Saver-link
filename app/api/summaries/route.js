@@ -1,22 +1,56 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { getD1Database } from "../../lib/d1";
 
-// POST: Triggers simulation proxy insights and passes analysis down to the frontend UI
 export async function POST(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const linkId = searchParams.get('linkId');
+  const linkId = new URL(request.url).searchParams.get("linkId")?.trim();
+  if (!linkId) {
+    return NextResponse.json({ error: "The linkId query parameter is required." }, { status: 400 });
+  }
 
-    if (!linkId) {
-      return NextResponse.json({ error: 'Target link ID parameter missing' }, { status: 400 });
+  try {
+    const db = await getD1Database();
+    const link = await db
+      .prepare("SELECT id, original_url, custom_name FROM links WHERE id = ?")
+      .bind(linkId)
+      .first();
+
+    if (!link) {
+      return NextResponse.json({ error: "Saved link not found." }, { status: 404 });
     }
 
-    // Artificially wait 1.2 seconds to accurately mimic high-speed serverless inference parsing
-    await new Promise((resolve) => setTimeout(resolve, 1200)); 
+    const existing = await db
+      .prepare("SELECT summary_text FROM summaries WHERE link_id = ?")
+      .bind(linkId)
+      .first();
 
-    const generatedSummaryText = "Automated AI Analysis: This resource details the core architectural benefits of deploying applications onto Cloudflare Workers, emphasizing sub-millisecond scaling metrics, global V8 isolated sandbox layers, and decoupled edge processing patterns.";
+    if (existing) {
+      return NextResponse.json({ summary_text: existing.summary_text });
+    }
 
-    return NextResponse.json({ summary_text: generatedSummaryText }, { status: 200 });
+    const domain = new URL(link.original_url).hostname.replace(/^www\./, "");
+    const summaryText = `${link.custom_name} is saved from ${domain}. Open the link to revisit this resource and explore its details.`;
+
+    await db
+      .prepare(
+        `INSERT INTO summaries (id, link_id, summary_text)
+         VALUES (?, ?, ?)
+         ON CONFLICT(link_id) DO NOTHING`,
+      )
+      .bind(crypto.randomUUID(), linkId, summaryText)
+      .run();
+
+    const savedSummary = await db
+      .prepare("SELECT summary_text FROM summaries WHERE link_id = ?")
+      .bind(linkId)
+      .first();
+
+    if (!savedSummary) {
+      throw new Error("Generated summary could not be read back from D1.");
+    }
+
+    return NextResponse.json({ summary_text: savedSummary.summary_text });
   } catch (error) {
-    return NextResponse.json({ error: 'AI processing or scraping failure' }, { status: 500 });
+    console.error("Failed to read or create summary in D1:", error);
+    return NextResponse.json({ error: "Unable to create a summary for this link." }, { status: 500 });
   }
 }

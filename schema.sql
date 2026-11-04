@@ -7,18 +7,17 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS links (
     id TEXT PRIMARY KEY NOT NULL,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    url TEXT NOT NULL,
-    title TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    original_url TEXT NOT NULL,
+    custom_name TEXT NOT NULL,
+    custom_icon TEXT NOT NULL DEFAULT 'Bookmark',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
 CREATE TABLE IF NOT EXISTS summaries (
     id TEXT PRIMARY KEY NOT NULL,
-    link_id TEXT NOT NULL REFERENCES links(id) ON DELETE CASCADE,
-    summary TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    link_id TEXT NOT NULL UNIQUE REFERENCES links(id) ON DELETE CASCADE,
+    summary_text TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
-CREATE INDEX IF NOT EXISTS idx_links_user_id ON links(user_id);
-CREATE INDEX IF NOT EXISTS idx_summaries_link_id ON summaries(link_id);
+CREATE INDEX IF NOT EXISTS idx_links_created_at ON links(created_at DESC);

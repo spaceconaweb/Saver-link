@@ -9,6 +9,7 @@ import {
   Globe,
   Layers,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 const ICONS = {
@@ -30,7 +31,7 @@ function getDomain(url) {
   }
 }
 
-export default function LinkCard({ link, onSummarize, isSelected }) {
+export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
   const Icon = ICONS[link.custom_icon] || Bookmark;
   const domain = getDomain(link.original_url);
   const summary =
@@ -48,15 +49,25 @@ export default function LinkCard({ link, onSummarize, isSelected }) {
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-pink-100 bg-pink-100 text-pink-600 transition-colors group-hover:bg-pink-200">
             <Icon size={20} aria-hidden="true" />
           </div>
-          <a
-            href={link.original_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Open ${link.custom_name} in a new tab`}
-            className="rounded-xl p-2 text-slate-500 transition hover:bg-pink-100 hover:text-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-100"
-          >
-            <ExternalLink size={17} aria-hidden="true" />
-          </a>
+          <div className="flex items-center gap-1">
+            <a
+              href={link.original_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${link.custom_name} in a new tab`}
+              className="rounded-xl p-2 text-slate-500 transition hover:bg-pink-100 hover:text-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-100"
+            >
+              <ExternalLink size={17} aria-hidden="true" />
+            </a>
+            <button
+              type="button"
+              onClick={() => onDelete(link.id)}
+              aria-label={`Delete ${link.custom_name}`}
+              className="rounded-xl p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-100"
+            >
+              <Trash2 size={17} aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <section aria-label="The name">

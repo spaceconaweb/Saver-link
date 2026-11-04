@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Saver-link
 
-## Getting Started
+Saver-link is a Next.js application.
 
-First, run the development server:
+## Development
+
+Install dependencies and start the development server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Cloudflare D1 setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app reads the D1 database from the Cloudflare Worker binding named `DB`.
+`process.env.DB` is not a D1 database binding; the API uses the OpenNext
+Cloudflare request context to access `env.DB`.
 
-## Learn More
+Before previewing or deploying, replace `REPLACE_WITH_YOUR_D1_DATABASE_ID` in
+`wrangler.jsonc` with the ID for the existing `hublink-db` database. You can
+find the ID with `npx wrangler d1 list`. The binding name must remain `DB`.
 
-To learn more about Next.js, take a look at the following resources:
+For a new database, apply the root-level schema from the project root:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx wrangler d1 execute hublink-db --file=./schema.sql --remote
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+If you already applied the earlier schema that required `user_id` and used
+`url`/`title`, apply the data-preserving upgrade instead:
 
-## Deploy on Vercel
+```bash
+npx wrangler d1 execute hublink-db --file=./migrations/0002_shared_link_schema.sql --remote
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Choose **one** command based on the database's current schema; do not run the
+upgrade against a newly initialized database. Both commands change the remote
+database, so verify the database and environment before running them.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The summary endpoint currently stores a deterministic placeholder summary. It
+does not call a Workers AI model yet.
+
+Use `npm run preview` to build and preview in the Workers runtime. Use
+`npm run deploy` only after setting the database ID and applying the matching
+schema.

@@ -104,6 +104,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteLink = async (linkId) => {
+    setErrorMessage("");
+
+    try {
+      const query = new URLSearchParams({ linkId });
+      const response = await fetch(`/api/links?${query}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("We couldn't delete that link. Please try again.");
+      }
+
+      setLinks((currentLinks) => currentLinks.filter((link) => link.id !== linkId));
+      setSelectedLink((currentLink) => (currentLink?.id === linkId ? null : currentLink));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Something went wrong while deleting your link.",
+      );
+    }
+  };
+
   const handleSummarize = async (link) => {
     speechSynthesisRef.current?.cancel();
     setIsSpeaking(false);
@@ -278,6 +297,7 @@ export default function Dashboard() {
                       key={link.id}
                       link={link}
                       onSummarize={() => void handleSummarize(link)}
+                      onDelete={handleDeleteLink}
                       isSelected={selectedLink?.id === link.id}
                     />
                   ))}
