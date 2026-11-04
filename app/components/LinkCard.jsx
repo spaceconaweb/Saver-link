@@ -84,7 +84,14 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected, isEx
             The name
           </p>
           <h3 className="break-words text-lg font-bold leading-snug text-slate-800">
-            {link.custom_name || "Untitled link"}
+            <a
+              href={link.original_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-sm transition-colors hover:text-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-100"
+            >
+              {link.custom_name || "Untitled link"}
+            </a>
           </h3>
         </section>
 
