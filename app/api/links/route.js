@@ -39,3 +39,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Database write failure' }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  return NextResponse.json({ success: true }, { status: 200 });
+}

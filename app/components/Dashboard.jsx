@@ -83,6 +83,24 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteLink = async (id) => {
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/links?linkId=${encodeURIComponent(id)}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) throw new Error('Failed to delete link.');
+
+      setLinks((prev) => prev.filter((link) => link.id !== id));
+      setSelectedLink((prev) => (prev?.id === id ? null : prev));
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to delete link.');
+    }
+  };
+
   // AI OPERATOR: Fetch existing summary or trigger Workers AI model runtime
   const handleSummarize = async (link) => {
     if (synth) synth.cancel();
@@ -196,6 +214,7 @@ export default function Dashboard() {
                       key={link.id} 
                       link={link} 
                       onSummarize={() => handleSummarize(link)}
+                      onDelete={handleDeleteLink}
                       isSelected={selectedLink?.id === link.id}
                     />
                   ))}

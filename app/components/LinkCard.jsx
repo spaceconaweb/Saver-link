@@ -1,8 +1,8 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
-import { ExternalLink, Sparkles } from 'lucide-react';
+import { ExternalLink, Sparkles, Trash2 } from 'lucide-react';
 
-export default function LinkCard({ link, onSummarize, isSelected }) {
+export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
   // Dynamically resolve custom string icon saved in database to Lucide component mapping
   const IconComponent = LucideIcons[link.custom_icon] || LucideIcons.Bookmark;
 
@@ -22,15 +22,30 @@ export default function LinkCard({ link, onSummarize, isSelected }) {
           </div>
           
           {/* Instant Click-To-Open Anchor Routing Route */}
-          <a 
-            href={link.original_url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-slate-500 hover:text-slate-300 p-1.5 hover:bg-slate-800 rounded-lg transition"
-            title="Open Original Resource"
-          >
-            <ExternalLink size={16} />
-          </a>
+          <div className="flex items-center gap-1">
+            <a
+              href={link.original_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-300 p-1.5 hover:bg-slate-800 rounded-lg transition"
+              title="Open Original Resource"
+            >
+              <ExternalLink size={16} />
+            </a>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(link.id);
+              }}
+              className="text-slate-500 hover:text-rose-400 p-1.5 hover:bg-slate-800 rounded-lg transition"
+              title="Delete link"
+              aria-label={`Delete ${link.custom_name}`}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
 
         <h3 className="font-semibold text-slate-100 group-hover:text-white leading-snug line-clamp-2 mb-2 transition">
