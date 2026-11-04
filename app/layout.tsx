@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HubLink — Your saved links",
+  title: "LinkSava — Your saved links",
   description: "Keep the links you love in one calm, thoughtful place.",
 };
 

@@ -15,7 +15,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           <Bookmark size={20} aria-hidden="true" />
         </span>
         <span>
-          <span className="block text-lg font-bold tracking-tight text-pink-900">HubLink</span>
+          <span className="block text-lg font-bold tracking-tight text-pink-900">LinkSava</span>
           <span className="block text-xs text-slate-500">A home for what matters</span>
         </span>
       </Link>
