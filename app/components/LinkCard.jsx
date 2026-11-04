@@ -4,6 +4,7 @@ import {
   BookOpen,
   Code,
   Cpu,
+  Database,
   ExternalLink,
   FileText,
   Globe,
@@ -18,6 +19,7 @@ const ICONS = {
   BookOpen,
   Code,
   Cpu,
+  Database,
   FileText,
   Globe,
   Layers,
@@ -31,7 +33,7 @@ function getDomain(url) {
   }
 }
 
-export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
+export default function LinkCard({ link, onSummarize, onDelete, isSelected, isExample = false }) {
   const Icon = ICONS[link.custom_icon] || Bookmark;
   const domain = getDomain(link.original_url);
   const summary =
@@ -50,6 +52,11 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
             <Icon size={20} aria-hidden="true" />
           </div>
           <div className="flex items-center gap-1">
+            {isExample && (
+              <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-pink-700">
+                Sample
+              </span>
+            )}
             <a
               href={link.original_url}
               target="_blank"
@@ -59,14 +66,16 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
             >
               <ExternalLink size={17} aria-hidden="true" />
             </a>
-            <button
-              type="button"
-              onClick={() => onDelete(link.id)}
-              aria-label={`Delete ${link.custom_name}`}
-              className="rounded-xl p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-100"
-            >
-              <Trash2 size={17} aria-hidden="true" />
-            </button>
+            {!isExample && (
+              <button
+                type="button"
+                onClick={() => onDelete(link.id)}
+                aria-label={`Delete ${link.custom_name}`}
+                className="rounded-xl p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-4 focus:ring-rose-100"
+              >
+                <Trash2 size={17} aria-hidden="true" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -99,7 +108,9 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
 
       <div className="mt-6 flex items-center justify-between gap-3 border-t border-pink-100 pt-4">
         <time className="text-xs text-slate-500">
-          {link.created_at
+          {isExample
+            ? "Example link"
+            : link.created_at
             ? new Date(link.created_at * 1000).toLocaleDateString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -110,10 +121,11 @@ export default function LinkCard({ link, onSummarize, onDelete, isSelected }) {
         <button
           type="button"
           onClick={onSummarize}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-xs font-semibold text-pink-700 transition hover:border-pink-200 hover:bg-pink-100 focus:outline-none focus:ring-4 focus:ring-pink-100"
+          disabled={isExample}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-pink-100 bg-pink-50 px-3 py-2 text-xs font-semibold text-pink-700 transition hover:border-pink-200 hover:bg-pink-100 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-default disabled:opacity-70"
         >
           <Sparkles size={14} aria-hidden="true" />
-          {link.summary ? "View summary" : "Create summary"}
+          {isExample ? "Example summary" : link.summary ? "View summary" : "Create summary"}
         </button>
       </div>
     </article>

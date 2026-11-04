@@ -7,6 +7,57 @@ import AddLinkModal from "./AddLinkModal";
 import LinkCard from "./LinkCard";
 import Sidebar from "./Sidebar";
 
+const EXAMPLE_LINKS = [
+  {
+    id: "example-nextjs-app-router",
+    custom_name: "Next.js App Router Guide",
+    original_url: "https://nextjs.org/docs/app",
+    custom_icon: "Layers",
+    summary:
+      "A practical guide to building web applications with Next.js layouts, pages, routing, and server-side features.",
+  },
+  {
+    id: "example-cloudflare-d1",
+    custom_name: "Cloudflare D1 Documentation",
+    original_url: "https://developers.cloudflare.com/d1/",
+    custom_icon: "Database",
+    summary:
+      "Learn how Cloudflare D1 stores SQLite databases at the edge and how to query them from Workers.",
+  },
+  {
+    id: "example-mdn-css-grid",
+    custom_name: "MDN CSS Grid Layout",
+    original_url: "https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout",
+    custom_icon: "Code",
+    summary:
+      "A reference for arranging page content into flexible rows and columns with CSS Grid.",
+  },
+  {
+    id: "example-tailwind-responsive",
+    custom_name: "Tailwind Responsive Design",
+    original_url: "https://tailwindcss.com/docs/responsive-design",
+    custom_icon: "FileText",
+    summary:
+      "A quick reference for adapting utility styles across mobile, tablet, and desktop breakpoints.",
+  },
+  {
+    id: "example-lucide-icons",
+    custom_name: "Lucide Icon Library",
+    original_url: "https://lucide.dev/icons/",
+    custom_icon: "Bookmark",
+    summary:
+      "Browse a consistent collection of open-source icons for menus, buttons, and helpful interface details.",
+  },
+  {
+    id: "example-sqlite-foreign-keys",
+    custom_name: "SQLite Foreign Key Guide",
+    original_url: "https://www.sqlite.org/foreignkeys.html",
+    custom_icon: "BookOpen",
+    summary:
+      "Understand how foreign keys connect related records and help keep database data consistent.",
+  },
+];
+
 export default function Dashboard() {
   const [links, setLinks] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
@@ -280,28 +331,26 @@ export default function Dashboard() {
                   <span className="h-9 w-9 animate-spin rounded-full border-4 border-pink-200 border-t-pink-600" />
                   <p className="text-sm text-slate-600">Gathering your saved links...</p>
                 </div>
-              ) : links.length === 0 ? (
-                <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border border-dashed border-pink-200 bg-white/70 px-6 text-center">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-100 text-pink-600">
-                    <Bookmark size={25} aria-hidden="true" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-800">A fresh start</h3>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
-                    Save a link above and it will be waiting here whenever you need it.
-                  </p>
-                </div>
               ) : (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {links.map((link) => (
-                    <LinkCard
-                      key={link.id}
-                      link={link}
-                      onSummarize={() => void handleSummarize(link)}
-                      onDelete={handleDeleteLink}
-                      isSelected={selectedLink?.id === link.id}
-                    />
-                  ))}
-                </div>
+                <>
+                  {links.length === 0 && (
+                    <div className="mb-5 rounded-2xl border border-pink-100 bg-white/75 px-4 py-3 text-sm text-slate-600">
+                      These six sample cards are just examples. Save a link above to start your own collection.
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {(links.length > 0 ? links : EXAMPLE_LINKS).map((link) => (
+                      <LinkCard
+                        key={link.id}
+                        link={link}
+                        onSummarize={() => void handleSummarize(link)}
+                        onDelete={handleDeleteLink}
+                        isSelected={selectedLink?.id === link.id}
+                        isExample={links.length === 0}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </section>
