@@ -1,19 +1,9 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "hublink",
-  "main": ".open-next/worker.js",
-  "compatibility_date": "2026-11-03",
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "linksava",
+  "pages_build_output_dir": "./out",
+  "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "hublink"
-    }
-  ],
   "d1_databases": [
     {
       "binding": "DB",

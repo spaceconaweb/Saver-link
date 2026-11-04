@@ -1,27 +1,35 @@
-# Saver-link
+# LinkSava
 
-Saver-link is a Next.js application.
+LinkSava is a Next.js static frontend with Cloudflare Pages Functions backed by
+Cloudflare D1.
 
 ## Development
 
-Install dependencies and start the development server:
+Install dependencies and run the Next.js development server for UI work:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+To test the static site and Pages Functions together in Wrangler, use:
 
-## Cloudflare D1 setup
+```bash
+npm run pages:dev
+```
 
-The app reads the D1 database from the Cloudflare Worker binding named `DB`.
-`process.env.DB` is not a D1 database binding; the API uses the OpenNext
-Cloudflare request context to access `env.DB`.
+## Cloudflare Pages setup
 
-Before previewing or deploying, replace `REPLACE_WITH_YOUR_D1_DATABASE_ID` in
-`wrangler.jsonc` with the ID for the existing `hublink-db` database. You can
-find the ID with `npx wrangler d1 list`. The binding name must remain `DB`.
+The app is configured for Cloudflare Pages: Next.js exports static assets to
+`out/`, and routes under `functions/api/` handle `/api/links` and
+`/api/summaries` using the Pages D1 binding named `DB`. The compatibility date
+is pinned to `2026-11-01` in `wrangler.jsonc`.
+
+Before deploying, replace `REPLACE_WITH_YOUR_D1_DATABASE_ID` in
+`wrangler.jsonc` with the ID of the existing `hublink-db` database. Find it
+with `npx wrangler d1 list`. If your Cloudflare Pages project's name is not
+`linksava`, update the `name` in `wrangler.jsonc` and the `--project-name` in
+the `pages:deploy` script to match its exact name.
 
 For a new database, apply the root-level schema from the project root:
 
@@ -43,6 +51,7 @@ database, so verify the database and environment before running them.
 The summary endpoint currently stores a deterministic placeholder summary. It
 does not call a Workers AI model yet.
 
-Use `npm run preview` to build and preview in the Workers runtime. Use
-`npm run deploy` only after setting the database ID and applying the matching
-schema.
+In Cloudflare Pages, set the build command to `npm run build` and the build
+output directory to `out`. Once the D1 database ID and matching schema are
+configured, deploy with `npm run pages:deploy`, or connect the repository to
+Pages and deploy through Git integration.
