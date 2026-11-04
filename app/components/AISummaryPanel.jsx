@@ -1,79 +1,104 @@
-import React from 'react';
-import { Volume2, VolumeX, X, Sparkles } from 'lucide-react';
+import { Sparkles, Volume2, VolumeX, X } from "lucide-react";
 
-export default function AISummaryPanel({ link, isLoading, isSpeaking, onToggleSpeech, onClose }) {
+const WAVE_HEIGHTS = [12, 19, 14, 24, 16, 21, 11, 18, 25, 15, 20, 12, 17, 23, 13];
+
+export default function AISummaryPanel({
+  link,
+  isLoading,
+  isSpeaking,
+  onToggleSpeech,
+  onClose,
+}) {
   return (
-    <div className="w-80 bg-slate-950 border-l border-slate-800 flex flex-col justify-between flex-shrink-0 animate-slide-in">
-      <div className="p-5 border-b border-slate-900 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-indigo-400">
-          <Sparkles size={16} />
-          <h4 className="font-semibold text-sm text-white">AI Proxy Insights</h4>
+    <aside
+      aria-label="Link summary"
+      className="w-full shrink-0 border-t border-pink-100 bg-white lg:w-80 lg:border-l lg:border-t-0"
+    >
+      <div className="flex items-center justify-between border-b border-pink-100 px-5 py-4">
+        <div className="flex items-center gap-2 text-pink-700">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-pink-100">
+            <Sparkles size={16} aria-hidden="true" />
+          </span>
+          <h2 className="text-sm font-semibold text-slate-800">A little more context</h2>
         </div>
-        <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition">
-          <X size={16} />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close summary"
+          className="rounded-lg p-2 text-slate-500 transition hover:bg-pink-50 hover:text-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-100"
+        >
+          <X size={17} aria-hidden="true" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 space-y-4">
-        <div className="text-xs text-slate-400 font-medium line-clamp-2">
-          {link.custom_name}
-        </div>
-        
-        {isLoading ? (
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-3 animate-pulse">
-            <div className="h-3 bg-slate-800 rounded w-full"></div>
-            <div className="h-3 bg-slate-800 rounded w-5/6"></div>
-            <div className="h-3 bg-slate-800 rounded w-4/5"></div>
-            <p className="text-[10px] font-mono text-center text-indigo-400/70 pt-2 tracking-wider">
-              RUNNING WORKERS AI INFERENCE MODEL...
-            </p>
-          </div>
-        ) : (
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-            <p className="text-sm text-slate-300 leading-relaxed shadow-sm">
-              {link.summary || 'No analytics summary parsed for this entity link.'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="p-5 bg-slate-900/40 border-t border-slate-900 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-slate-400">Audio Readout Engine</div>
-          
-          <button 
-            onClick={onToggleSpeech}
-            disabled={isLoading || !link.summary}
-            className={`p-2 rounded-full border transition-all ${
-              isSpeaking 
-                ? 'bg-emerald-600/10 border-emerald-500 text-emerald-400' 
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:pointer-events-none'
-            }`}
-          >
-            {isSpeaking ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
+      <div className="space-y-4 p-5">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-pink-600">Saved link</p>
+          <h3 className="mt-1 break-words font-semibold text-slate-800">{link.custom_name}</h3>
         </div>
 
-        <div className="h-10 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-center gap-1 px-4 overflow-hidden">
-          {isSpeaking ? (
-            Array.from({ length: 15 }).map((_, index) => (
-              <div 
-                key={index}
-                className="w-1 bg-indigo-500 rounded-full animate-bounce"
-                style={{
-                  height: `${Math.floor(Math.random() * 24) + 8}px`,
-                  animationDuration: `${0.5 + Math.random() * 0.7}s`,
-                  animationDelay: `${index * 0.04}s`
-                }}
-              />
-            ))
-          ) : (
-            <div className="text-xs font-mono text-slate-600 tracking-wide select-none">
-              {isLoading ? 'GENERATING AUDIO...' : 'AUDIO READY • STANDBY'}
+        <div aria-live="polite" className="rounded-2xl border border-pink-100 bg-pink-50/70 p-4">
+          {isLoading ? (
+            <div role="status" className="space-y-3">
+              <span className="sr-only">Creating a summary...</span>
+              <div className="h-3 w-full animate-pulse rounded-full bg-pink-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded-full bg-pink-100" />
+              <div className="h-3 w-4/6 animate-pulse rounded-full bg-pink-100" />
+              <p className="pt-1 text-xs text-pink-700">Gathering the helpful bits...</p>
             </div>
+          ) : (
+            <p className="text-sm leading-6 text-slate-700">
+              {link.summary ||
+                "A summary will appear here when it is ready, so you can quickly remember what this link is about."}
+            </p>
           )}
         </div>
+
+        <div className="rounded-2xl border border-pink-100 bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Listen along</p>
+              <p className="mt-0.5 text-xs text-slate-500">Hear your summary read aloud</p>
+            </div>
+            <button
+              type="button"
+              onClick={onToggleSpeech}
+              disabled={isLoading || !link.summary}
+              aria-label={isSpeaking ? "Stop reading summary aloud" : "Read summary aloud"}
+              className={`rounded-full border p-2.5 transition focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:cursor-not-allowed disabled:opacity-40 ${
+                isSpeaking
+                  ? "border-pink-300 bg-pink-100 text-pink-700"
+                  : "border-pink-100 bg-white text-pink-600 hover:bg-pink-50"
+              }`}
+            >
+              {isSpeaking ? (
+                <VolumeX size={17} aria-hidden="true" />
+              ) : (
+                <Volume2 size={17} aria-hidden="true" />
+              )}
+            </button>
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="mt-4 flex h-10 items-center justify-center gap-1 overflow-hidden rounded-xl bg-pink-50 px-3"
+          >
+            {isSpeaking ? (
+              WAVE_HEIGHTS.map((height, index) => (
+                <span
+                  key={index}
+                  className="w-1 rounded-full bg-pink-400 motion-safe:animate-pulse"
+                  style={{ height: `${height}px`, animationDelay: `${index * 45}ms` }}
+                />
+              ))
+            ) : (
+              <span className="text-xs text-slate-500">
+                {isLoading ? "Preparing your summary..." : "Your summary is ready when you are"}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </aside>
   );
 }

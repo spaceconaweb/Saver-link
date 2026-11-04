@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LinkSava
 
-## Getting Started
+LinkSava is a Next.js static frontend with Cloudflare Pages Functions backed by
+Cloudflare D1.
 
-First, run the development server:
+## Development
+
+Install dependencies and run the Next.js development server for UI work:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+To test the static site and Pages Functions together in Wrangler, use:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run pages:dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Cloudflare Pages setup
 
-## Learn More
+The app is configured for Cloudflare Pages: Next.js exports static assets to
+`out/`, and routes under `functions/api/` handle `/api/links` and
+`/api/summaries` using the Pages D1 binding named `DB`. The compatibility date
+is pinned to `2026-11-01` in `wrangler.jsonc`.
 
-To learn more about Next.js, take a look at the following resources:
+Before deploying, replace `REPLACE_WITH_YOUR_D1_DATABASE_ID` in
+`wrangler.jsonc` with the ID of the existing `hublink-db` database. Find it
+with `npx wrangler d1 list`. If your Cloudflare Pages project's name is not
+`linksava`, update the `name` in `wrangler.jsonc` and the `--project-name` in
+the `pages:deploy` script to match its exact name.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For a new database, apply the root-level schema from the project root:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx wrangler d1 execute hublink-db --file=./schema.sql --remote
+```
 
-## Deploy on Vercel
+If you already applied the earlier schema that required `user_id` and used
+`url`/`title`, apply the data-preserving upgrade instead:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx wrangler d1 execute hublink-db --file=./migrations/0002_shared_link_schema.sql --remote
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Choose **one** command based on the database's current schema; do not run the
+upgrade against a newly initialized database. Both commands change the remote
+database, so verify the database and environment before running them.
+
+The summary endpoint currently stores a deterministic placeholder summary. It
+does not call a Workers AI model yet.
+
+In Cloudflare Pages, set the build command to `npm run build` and the build
+output directory to `out`. Once the D1 database ID and matching schema are
+configured, deploy with `npm run pages:deploy`, or connect the repository to
+Pages and deploy through Git integration.

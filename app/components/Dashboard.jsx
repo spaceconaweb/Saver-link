@@ -1,230 +1,377 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { Layers, Plus } from 'lucide-react';
-import Sidebar from './Sidebar';
-import LinkCard from './LinkCard';
-import AddLinkModal from './AddLinkModal';
-import AISummaryPanel from './AISummaryPanel';
+import { useEffect, useRef, useState } from "react";
+import { Bookmark, Layers, Plus, Sparkles } from "lucide-react";
+import AISummaryPanel from "./AISummaryPanel";
+import AddLinkModal from "./AddLinkModal";
+import LinkCard from "./LinkCard";
+import Sidebar from "./Sidebar";
+
+const EXAMPLE_LINKS = [
+  {
+    id: "example-nextjs-app-router",
+    custom_name: "Next.js App Router Guide",
+    original_url: "https://nextjs.org/docs/app",
+    custom_icon: "Layers",
+    summary:
+      "A practical guide to building web applications with Next.js layouts, pages, routing, and server-side features.",
+  },
+  {
+    id: "example-cloudflare-d1",
+    custom_name: "Cloudflare D1 Documentation",
+    original_url: "https://developers.cloudflare.com/d1/",
+    custom_icon: "Database",
+    summary:
+      "Learn how Cloudflare D1 stores SQLite databases at the edge and how to query them from Workers.",
+  },
+  {
+    id: "example-mdn-css-grid",
+    custom_name: "MDN CSS Grid Layout",
+    original_url: "https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout",
+    custom_icon: "Code",
+    summary:
+      "A reference for arranging page content into flexible rows and columns with CSS Grid.",
+  },
+  {
+    id: "example-tailwind-responsive",
+    custom_name: "Tailwind Responsive Design",
+    original_url: "https://tailwindcss.com/docs/responsive-design",
+    custom_icon: "FileText",
+    summary:
+      "A quick reference for adapting utility styles across mobile, tablet, and desktop breakpoints.",
+  },
+  {
+    id: "example-lucide-icons",
+    custom_name: "Lucide Icon Library",
+    original_url: "https://lucide.dev/icons/",
+    custom_icon: "Bookmark",
+    summary:
+      "Browse a consistent collection of open-source icons for menus, buttons, and helpful interface details.",
+  },
+  {
+    id: "example-sqlite-foreign-keys",
+    custom_name: "SQLite Foreign Key Guide",
+    original_url: "https://www.sqlite.org/foreignkeys.html",
+    custom_icon: "BookOpen",
+    summary:
+      "Understand how foreign keys connect related records and help keep database data consistent.",
+  },
+];
 
 export default function Dashboard() {
   const [links, setLinks] = useState([]);
-  const [activeTab, setActiveTab] = useState('all');
-  const [inputUrl, setInputUrl] = useState('');
+  const [activeTab, setActiveTab] = useState("all");
+  const [inputUrl, setInputUrl] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState(null);
-  
-  // Asynchronous Lifecycle States
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
-
-  // Audio Speech Synthesis States
+  const [errorMessage, setErrorMessage] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [synth, setSynth] = useState(null);
+  const speechSynthesisRef = useRef(null);
 
-  // Initialize Speech and Fetch Initial Data from Cloudflare D1
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      setSynth(window.speechSynthesis);
+    let isMounted = true;
+
+    if ("speechSynthesis" in window) {
+      speechSynthesisRef.current = window.speechSynthesis;
     }
-    fetchLinks();
+
+    fetch("/api/links")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("We couldn't load your saved links. Please try again.");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!Array.isArray(data.links)) {
+          throw new Error("The saved links response was not in the expected format.");
+        }
+        if (isMounted) setLinks(data.links);
+      })
+      .catch((error) => {
+        if (isMounted) {
+          setErrorMessage(
+            error instanceof Error
+              ? error.message
+              : "Something went wrong while loading your links.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+      speechSynthesisRef.current?.cancel();
+    };
   }, []);
 
-  // READ: Fetch all captured links belonging to the user
-  const fetchLinks = async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const response = await fetch('/api/links');
-      if (!response.ok) throw new Error('Failed to retrieve hub links.');
-      const data = await response.json();
-      setLinks(data.links || []);
-    } catch (err) {
-      setErrorMessage(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUrlSubmit = (e) => {
-    e.preventDefault();
+  const handleUrlSubmit = (event) => {
+    event.preventDefault();
     if (!inputUrl.trim()) return;
+    setErrorMessage("");
     setIsModalOpen(true);
   };
 
-  // CREATE: Post custom metadata to Cloudflare D1
   const handleSaveLink = async (metadata) => {
     setIsSaving(true);
-    setErrorMessage(null);
+    setErrorMessage("");
+
     try {
-      const response = await fetch('/api/links', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           original_url: inputUrl,
-          custom_name: metadata.name || 'Untitled Resource',
-          custom_icon: metadata.icon || 'Bookmark'
-        })
+          custom_name: metadata.name || "Untitled Resource",
+          custom_icon: metadata.icon || "Bookmark",
+        }),
       });
 
-      if (!response.ok) throw new Error('Failed to commit link to Cloudflare D1.');
-      const newLinkPayload = await response.json();
-      
-      // Optimistically push new record onto state array
-      setLinks((prevLinks) => [newLinkPayload.link, ...prevLinks]);
-      setInputUrl('');
+      if (!response.ok) {
+        throw new Error("We couldn't save that link. Please try again.");
+      }
+
+      const data = await response.json();
+      if (!data.link) {
+        throw new Error("The saved link response was not in the expected format.");
+      }
+
+      setLinks((currentLinks) => [data.link, ...currentLinks]);
+      setInputUrl("");
       setIsModalOpen(false);
-    } catch (err) {
-      setErrorMessage(err.message);
+      return true;
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Something went wrong while saving your link.",
+      );
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  // AI OPERATOR: Fetch existing summary or trigger Workers AI model runtime
+  const handleDeleteLink = async (linkId) => {
+    setErrorMessage("");
+
+    try {
+      const query = new URLSearchParams({ linkId });
+      const response = await fetch(`/api/links?${query}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("We couldn't delete that link. Please try again.");
+      }
+
+      setLinks((currentLinks) => currentLinks.filter((link) => link.id !== linkId));
+      setSelectedLink((currentLink) => (currentLink?.id === linkId ? null : currentLink));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Something went wrong while deleting your link.",
+      );
+    }
+  };
+
   const handleSummarize = async (link) => {
-    if (synth) synth.cancel();
+    speechSynthesisRef.current?.cancel();
     setIsSpeaking(false);
-    
     setSelectedLink(link);
+
     if (link.summary) return;
 
     setIsProcessingAI(true);
-    setErrorMessage(null);
+    setErrorMessage("");
+
     try {
-      const response = await fetch(`/api/summaries?linkId=${link.id}`, {
-        method: 'POST'
-      });
+      const query = new URLSearchParams({ linkId: link.id });
+      const response = await fetch(`/api/summaries?${query}`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error("We couldn't create a summary for this link. Please try again.");
+      }
 
-      if (!response.ok) throw new Error('Workers AI execution timeout or parsing failure.');
       const data = await response.json();
+      if (typeof data.summary_text !== "string" || !data.summary_text.trim()) {
+        throw new Error("The summary response did not contain summary text.");
+      }
 
-      setLinks((prevLinks) => 
-        prevLinks.map((item) => 
-          item.id === link.id ? { ...item, summary: data.summary_text } : item
-        )
+      const updatedLink = { ...link, summary: data.summary_text };
+      setLinks((currentLinks) =>
+        currentLinks.map((item) => (item.id === link.id ? updatedLink : item)),
       );
-      
-      setSelectedLink((prev) => ({ ...prev, summary: data.summary_text }));
-    } catch (err) {
-      setErrorMessage(err.message);
+      setSelectedLink(updatedLink);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Something went wrong while creating the summary.",
+      );
     } finally {
       setIsProcessingAI(false);
     }
   };
 
   const toggleSpeech = (text) => {
-    if (!synth || !text) return;
+    const speechSynthesis = speechSynthesisRef.current;
+    if (!speechSynthesis || !text) return;
 
     if (isSpeaking) {
-      synth.cancel();
+      speechSynthesis.cancel();
       setIsSpeaking(false);
-    } else {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      setIsSpeaking(true);
-      synth.speak(utterance);
+      return;
     }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    speechSynthesis.speak(utterance);
   };
 
-  useEffect(() => {
-    return () => {
-      if (synth) synth.cancel();
-    };
-  }, [synth]);
+  const closeSummary = () => {
+    speechSynthesisRef.current?.cancel();
+    setIsSpeaking(false);
+    setSelectedLink(null);
+  };
+
+  const closeModal = () => {
+    if (isSaving) return;
+    setIsModalOpen(false);
+  };
 
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 font-sans antialiased overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-tr from-pink-50 via-rose-50 to-white text-slate-800 antialiased md:flex">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur px-8 py-6 flex-shrink-0">
-          <div className="max-w-4xl mx-auto w-full">
-            <h1 className="text-2xl font-bold tracking-tight mb-4 text-white">My Hub Links</h1>
-            
-            <form onSubmit={handleUrlSubmit} className="relative flex items-center">
-              <div className="absolute left-4 text-slate-400">
-                <Plus size={20} />
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="border-b border-pink-100 bg-white/75 px-5 py-6 backdrop-blur sm:px-8 lg:px-10">
+          <div className="mx-auto w-full max-w-7xl">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="mb-1 flex items-center gap-2 text-sm font-medium text-pink-600">
+                  <Sparkles size={16} aria-hidden="true" />
+                  Your little corner of the internet
+                </p>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-800 sm:text-3xl">
+                  My saved links
+                </h1>
               </div>
+              <p className="text-sm text-slate-600">
+                {links.length} {links.length === 1 ? "link" : "links"} kept safe
+              </p>
+            </div>
+
+            <form onSubmit={handleUrlSubmit} className="relative">
+              <label htmlFor="link-url" className="sr-only">
+                Paste a link to save
+              </label>
+              <Bookmark
+                size={19}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-pink-500"
+              />
               <input
+                id="link-url"
                 type="url"
                 required
-                placeholder="Paste any link here to capture to your Hub..."
+                placeholder="Paste a link you want to find again..."
                 value={inputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-12 pr-32 py-3.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition shadow-inner"
+                onChange={(event) => setInputUrl(event.target.value)}
+                className="w-full rounded-2xl border border-pink-100 bg-white py-4 pl-12 pr-36 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 hover:border-pink-200 focus:border-pink-300 focus:outline-none focus:ring-4 focus:ring-pink-100"
               />
               <button
                 type="submit"
                 disabled={isSaving}
-                className="absolute right-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white text-sm font-medium rounded-lg transition"
+                className="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center gap-2 rounded-xl bg-pink-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSaving ? 'Saving...' : 'Capture Link'}
+                <Plus size={16} aria-hidden="true" />
+                <span>Save link</span>
               </button>
             </form>
 
             {errorMessage && (
-              <div className="mt-3 px-4 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs rounded-xl flex items-center justify-between">
-                <span><strong>Runtime Error:</strong> {errorMessage}</span>
-                <button onClick={() => setErrorMessage(null)} className="font-bold underline ml-2">Dismiss</button>
+              <div
+                role="alert"
+                className="mt-4 flex items-start justify-between gap-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
+              >
+                <span>{errorMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => setErrorMessage("")}
+                  className="shrink-0 font-semibold text-rose-700 underline decoration-rose-300 underline-offset-2 hover:text-rose-900"
+                >
+                  Dismiss
+                </button>
               </div>
             )}
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden">
-          <div className="flex-1 overflow-y-auto px-8 py-6">
-            <div className="max-w-4xl mx-auto">
-              
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center pt-20 space-y-3">
-                  <div className="h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-xs text-slate-400 font-mono">QUERYING DATABASE...</p>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <section className="min-w-0 flex-1 overflow-y-auto px-5 py-7 sm:px-8 lg:px-10">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-pink-100 text-pink-600">
+                  <Layers size={19} aria-hidden="true" />
                 </div>
-              ) : links.length === 0 ? (
-                <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl">
-                  <Layers className="mx-auto text-slate-600 mb-3" size={32} />
-                  <p className="text-sm text-slate-400">Your visual Hub is completely empty. Paste a URL above to populate cards.</p>
+                <div>
+                  <h2 className="font-semibold text-slate-800">
+                    {activeTab === "ai-assistant" ? "Thoughtful summaries" : "Your collection"}
+                  </h2>
+                  <p className="text-sm text-slate-600">
+                    A calm place to keep the things you want to remember.
+                  </p>
+                </div>
+              </div>
+
+              {isLoading ? (
+                <div
+                  className="flex min-h-64 flex-col items-center justify-center gap-4 rounded-3xl border border-pink-100 bg-white/80"
+                  role="status"
+                >
+                  <span className="h-9 w-9 animate-spin rounded-full border-4 border-pink-200 border-t-pink-600" />
+                  <p className="text-sm text-slate-600">Gathering your saved links...</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {links.map((link) => (
-                    <LinkCard 
-                      key={link.id} 
-                      link={link} 
-                      onSummarize={() => handleSummarize(link)}
-                      isSelected={selectedLink?.id === link.id}
-                    />
-                  ))}
-                </div>
+                <>
+                  {links.length === 0 && (
+                    <div className="mb-5 rounded-2xl border border-pink-100 bg-white/75 px-4 py-3 text-sm text-slate-600">
+                      These six sample cards are just examples. Save a link above to start your own collection.
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {(links.length > 0 ? links : EXAMPLE_LINKS).map((link) => (
+                      <LinkCard
+                        key={link.id}
+                        link={link}
+                        onSummarize={() => void handleSummarize(link)}
+                        onDelete={handleDeleteLink}
+                        isSelected={selectedLink?.id === link.id}
+                        isExample={links.length === 0}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
-
             </div>
-          </div>
+          </section>
 
           {selectedLink && (
-            <AISummaryPanel 
+            <AISummaryPanel
               link={selectedLink}
               isLoading={isProcessingAI}
               isSpeaking={isSpeaking}
               onToggleSpeech={() => toggleSpeech(selectedLink.summary)}
-              onClose={() => {
-                if (synth) synth.cancel();
-                setIsSpeaking(false);
-                setSelectedLink(null);
-              }}
+              onClose={closeSummary}
             />
           )}
         </div>
       </main>
 
-      <AddLinkModal 
+      <AddLinkModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeModal}
         onSave={handleSaveLink}
+        isSaving={isSaving}
         url={inputUrl}
       />
     </div>

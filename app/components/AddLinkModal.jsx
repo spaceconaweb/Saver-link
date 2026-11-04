@@ -1,93 +1,153 @@
-import React, { useState } from 'react';
-import * as Icons from 'lucide-react';
-import { X } from 'lucide-react';
+"use client";
 
-const AVAILABLE_ICONS = ['Bookmark', 'Layers', 'Code', 'FileText', 'Cpu', 'Briefcase', 'Globe', 'BookOpen'];
+import { useState } from "react";
+import {
+  Bookmark,
+  BookOpen,
+  Briefcase,
+  Code,
+  Cpu,
+  FileText,
+  Globe,
+  Layers,
+  X,
+} from "lucide-react";
 
-export default function AddLinkModal({ isOpen, onClose, onSave, url }) {
-  const [customName, setCustomName] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('Bookmark');
+const AVAILABLE_ICONS = [
+  { name: "Bookmark", icon: Bookmark },
+  { name: "Layers", icon: Layers },
+  { name: "Code", icon: Code },
+  { name: "FileText", icon: FileText },
+  { name: "Cpu", icon: Cpu },
+  { name: "Briefcase", icon: Briefcase },
+  { name: "Globe", icon: Globe },
+  { name: "BookOpen", icon: BookOpen },
+];
+
+export default function AddLinkModal({ isOpen, onClose, onSave, isSaving, url }) {
+  const [customName, setCustomName] = useState("");
+  const [selectedIcon, setSelectedIcon] = useState("Bookmark");
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave({ name: customName, icon: selectedIcon });
-    setCustomName('');
-    setSelectedIcon('Bookmark');
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const saved = await onSave({ name: customName.trim(), icon: selectedIcon });
+    if (saved) {
+      setCustomName("");
+      setSelectedIcon("Bookmark");
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <h3 className="font-semibold text-white">Customize Hub Resource</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200 transition">
-            <X size={18} />
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/30 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !isSaving) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-link-title"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-pink-100 bg-white shadow-2xl shadow-pink-200/50"
+      >
+        <div className="flex items-center justify-between border-b border-pink-100 px-6 py-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-pink-600">
+              Make it yours
+            </p>
+            <h2 id="add-link-title" className="mt-1 text-lg font-bold text-slate-800">
+              Save a little something
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSaving}
+            aria-label="Close dialog"
+            className="rounded-xl p-2 text-slate-500 transition hover:bg-pink-50 hover:text-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:opacity-50"
+          >
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
           <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Original URL</label>
-            <div className="text-xs text-slate-400 bg-slate-950 px-3 py-2 rounded-lg border border-slate-800 truncate font-mono">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              The place
+            </p>
+            <p className="truncate rounded-xl border border-pink-100 bg-pink-50/70 px-4 py-3 text-sm text-slate-600">
               {url}
-            </div>
+            </p>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Custom Name</label>
-            <input 
+          <div className="relative">
+            <input
+              id="custom-link-name"
               type="text"
               required
-              placeholder="e.g. Workers Architecture Engine"
+              autoFocus
+              maxLength={120}
+              placeholder=" "
               value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+              onChange={(event) => setCustomName(event.target.value)}
+              className="peer w-full rounded-xl border border-pink-100 bg-white px-4 pb-3 pt-6 text-sm text-slate-800 shadow-sm transition placeholder:text-transparent hover:border-pink-200 focus:border-pink-400 focus:outline-none focus:ring-4 focus:ring-pink-100"
             />
+            <label
+              htmlFor="custom-link-name"
+              className="pointer-events-none absolute left-4 top-2 text-xs font-medium text-slate-500 transition peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-sm peer-focus:top-2 peer-focus:text-xs peer-focus:text-pink-700"
+            >
+              Give this link a name
+            </label>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Visual Hub Icon</label>
+          <fieldset>
+            <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Choose a little icon
+            </legend>
             <div className="grid grid-cols-4 gap-2">
-              {AVAILABLE_ICONS.map((iconName) => {
-                const Icon = Icons[iconName];
-                const isChosen = selectedIcon === iconName;
+              {AVAILABLE_ICONS.map(({ name, icon: Icon }) => {
+                const isSelected = selectedIcon === name;
                 return (
                   <button
-                    key={iconName}
+                    key={name}
                     type="button"
-                    onClick={() => setSelectedIcon(iconName)}
-                    className={`p-3 border rounded-xl flex items-center justify-center transition ${
-                      isChosen 
-                        ? 'bg-indigo-600/10 border-indigo-500 text-indigo-400' 
-                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-350'
+                    onClick={() => setSelectedIcon(name)}
+                    aria-label={name}
+                    aria-pressed={isSelected}
+                    className={`flex items-center justify-center rounded-xl border p-3 transition focus:outline-none focus:ring-4 focus:ring-pink-100 ${
+                      isSelected
+                        ? "border-pink-300 bg-pink-100 text-pink-700"
+                        : "border-pink-100 bg-white text-slate-500 hover:bg-pink-50 hover:text-pink-700"
                     }`}
                   >
-                    <Icon size={18} />
+                    <Icon size={19} aria-hidden="true" />
                   </button>
                 );
               })}
             </div>
-          </div>
+          </fieldset>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 text-sm font-medium rounded-xl transition"
+              disabled={isSaving}
+              className="flex-1 rounded-xl border border-pink-100 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-pink-50 focus:outline-none focus:ring-4 focus:ring-pink-100 disabled:opacity-50"
             >
-              Cancel
+              Not now
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-xl transition"
+              disabled={isSaving || !customName.trim()}
+              className="flex-1 rounded-xl bg-pink-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-700 focus:outline-none focus:ring-4 focus:ring-pink-200 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Save to Hub
+              {isSaving ? "Saving with care..." : "Save my link"}
             </button>
           </div>
         </form>
-      </div>
+      </section>
     </div>
   );
 }
